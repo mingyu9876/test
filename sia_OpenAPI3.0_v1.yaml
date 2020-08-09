@@ -1,0 +1,391 @@
+openapi: 3.0.0
+info:
+  title: Simulated Instrument Analytics API 
+  description: |
+    SS&C Algorithmics financial modeling microservice. Learn more at [ssctech.com](https://www.ssctech.com/landing/ssc-algorithmics)
+    # Introduction
+    Simulated Instrument Analytics (hereafter SIA) is a source for analytics on financial securities in the cloud. 
+    You can make requests to SIA to run financial models which seek to understand the behavior and properties of financial securities - 
+    stocks, bonds, commodities, and derivatives - and how they might behave over time. 
+    
+    SIA does this by calculating what are called "full revaluation models", or models that use data on securities
+    to project all of the cashflows it might make over the life of the product, running probabilistic simulations when deterministic approaches fall short.
+    These more comprehensive insights add much additional explanatory power when coupled to understand what a portfolio or 
+    collections of securities might do in aggregate. 
+
+    Scenarios add the ability to obtain the results of these models under alternative circumstances. Scenarios
+    may supply a set of shocks to finely test for sensitivities, whereas others replay observed events from history.
+    Simulations are meant to be observed as a whole, such as Monte Carlo scenarios to view tail risk, VaR, and other information
+    about worst case scenarios. 
+
+    The following is an explanation of how to access and best utilize the Simulated Instrument Analytics service.
+
+    # Error Handling
+    This API uses standard HTTP response codes to indicate whether a method completed successfully. A 200 
+    response always indicates success. A 400 type response is some sort of failure, and a 500 type response
+     usually indicates an internal system error.
+
+  version: 2.0.1
+  x-logo:
+    url: 'https://bloximages.chicago2.vip.townnews.com/journalinquirer.com/content/tncms/assets/v3/editorial/3/6b/36b1cc4a-d89c-11e9-9330-47032acdd357/5d7fb39c676fc.image.jpg?resize=400%2C268'
+    altText: Algorithmics logo
+servers:
+  - url: http://api.algorithmics.com/sia/v2
+    description: Explicitly specify your preferred SIA version (recommended for running in production)
+  - url: http://api.algorithmics.com/sia
+    description: Default to the latest version of SIA (currently /v2/)
+    
+paths:
+  /mtm/{id-type}:
+    get:
+      summary: mark-to-market
+      operationId: MtM
+      description: Returns the mark-to-market price (fair value) for a list of securities with a common ID-type.
+      parameters:
+        - name: authorization-api-key
+          in: header
+          description: The secure key used to verify access to the application.
+          example: q86zNTmsI1mgvkB5_-ejAFt11_iqZ-JAWjoI5CEqELXM
+          required: false
+          schema:
+            type: string
+        - name: authorization-instance-id
+          in: header
+          description: The unique ID which references the instance of SIA you wish to connect to.
+          example: c4587349-abcd-4a6f-93fd-bc54c3ff5afc
+          required: false
+          schema:
+            type: string
+        - name: id-type
+          in: path
+          required: true
+          description: The id-type of the security IDs provided.
+          schema:
+            type: string
+            enum: [isin,cusip,sedol,ric,otc]
+            example: isin
+        - name: ids
+          in: query
+          required: true
+          description: The list of security IDs to process. Must have a homogenous id-type.
+          schema:
+            type: array
+            minimum: 1
+            example: US78467J1007
+          style: form
+          explode: false                  
+      x-codeSamples:
+        - lang: 'python'
+          source: |
+            import requests
+            headers = {
+                'accept': "application/json",
+                'content-type': "application/json",
+                'authorization-api-key': <API_KEY_VALUE>
+                'authorization-instance-id': <UUID_VALUE>
+                }
+            url = "https://api.algorithmics.com/sia/v2/mtm/isin?ids=<id-of-instrument-1>,<id-of-instrument-2>"
+            response = requests.get(url,headers=headers)
+            print(response.text)
+        - lang: curl
+          source: |
+            curl --request GET  
+            --url 'https://api.algorithmics.com/sia/v2/mtm/isin?ids=<id-of-instrument-1>,<id-of-instrument-2>'
+            --header 'authorization-api-key: <API_KEY_VALUE>' 
+            --header 'authorization-instance-id: <UUID_VALUE>'
+        - lang: node
+          source: |
+            var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
+            var request = new XMLHttpRequest()
+            url = "https://api.algorithmics.com/sia/v2/mtm/isin?ids=<id-of-instrument-1>,<id-of-instrument-2>"
+            request.open("GET",url)
+            request.setRequestHeader("enctype", "string")
+            request.setRequestHeader("accept", "application/json")
+            request.setRequestHeader("content-type", "application/json")   
+            request.setRequestHeader("authorization-api-key", "API_KEY_VALUE")
+            request.setRequestHeader("authorization-instance-id", "UUID_VALUE")                      
+            request.send()
+            request.onload = () =>console.log(request.responseText)           
+      responses:
+        '200':    # status code
+          description: A JSON array of security mark-to-market values.
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/mtm-response'
+        '400':
+          description: The specified request was invalid. Check the id-type and that your request is formatted properly.  
+        '500':
+          description: Something went wrong on the server causing the request to fail.
+        '529':
+          description: The server is busy and not able to process your request. Please try again later.
+  /simulate:
+    post:
+      summary: simulate
+      operationId: simulate
+      description: Simulate analytics across financial securities and scenario sets.
+      parameters:
+        - name: authorization-api-key
+          in: header
+          description: The secure key used to verify access to the application.
+          example: q86zNTmsI1mgvkB5_-ejAFt11_iqZ-JAWjoI5CEqELXM
+          required: false
+          schema:
+            type: string
+        - name: authorization-instance-id
+          in: header
+          description: The unique ID which references the instance of SIA you wish to connect to.
+          example: c4587349-abcd-4a6f-93fd-bc54c3ff5afc
+          required: false
+          schema:
+            type: string
+      requestBody:
+        $ref: '#/components/requestBodies/simulate'
+      x-codeSamples:
+        - lang: 'python'
+          source: |
+            import requests
+            headers = {
+                'accept': "application/json",
+                'content-type': "application/json",
+                'authorization-api-key': <API_KEY_VALUE>
+                'authorization-instance-id': <UUID_VALUE>
+                }
+            payload = {
+              "id-list": [
+                {"id":"US78467J1007","type":"isin","quantity":1000},
+                {"id":"US0378331005","type":"isin","quantity":2000},
+                {"id":"US4592001014","type":"isin","quantity":3000}],
+              "analytics":["PnL","Value"],
+              "algo-scenario-set":"coronavirus",
+              "valuation-date":"2020-08-01",
+              "format": "json"              
+            }
+            url = "https://api.algorithmics.com/sia/v2/simulate"
+            response = requests.post(url,headers=headers, data=payload)
+            print(response.text)
+        - lang: curl
+          source: |
+            curl --request POST  
+            --url 'https://api.algorithmics.com/sia/v2/simulate'
+            --header 'authorization-api-key: <API_KEY_VALUE>' 
+            --header 'authorization-instance-id: <UUID_VALUE>'
+            -data-raw '{"id-list":
+              [ {"id":"US78467J1007","type":"isin","quantity":1000},
+                {"id":"US0378331005","type":"isin","quantity":2000},
+                {"id":"US4592001014","type":"isin","quantity":3000}],
+              "analytics":["PnL","Value"],
+              "algo-scenario-set":"coronavirus",
+              "valuation-date":"2020-08-01",
+              "format": "json"
+              }'
+        - lang: node
+          source: |
+            var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
+            var request = new XMLHttpRequest()
+            request.open("POST","https://api.algorithmics.com/sia/v2/simulate")
+            request.setRequestHeader("enctype", "string")
+            request.setRequestHeader("accept", "application/json")
+            request.setRequestHeader("content-type", "application/json")   
+            request.setRequestHeader("authorization-api-key", "API_KEY_VALUE")
+            request.setRequestHeader("authorization-instance-id", "UUID_VALUE")
+            data = {"id-list":
+                [{"id":"US78467J1007","type":"isin","quantity":1000},
+                 {"id":"US0378331005","type":"isin","quantity":2000},
+                 {"id":"US4592001014","type":"isin","quantity":3000}],
+              "analytics":["PnL","Value"],
+              "algo-scenario-set":"coronavirus",
+              "valuation-date":"2020-08-01",
+              "format": "json"
+              }
+            request.send(JSON.stringify(data))                      
+            request.send()
+            request.onload = () =>console.log(request.responseText)           
+      responses:
+        '200':    # status code
+          description: A JSON array of security mark-to-market values.
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/simulate-response'
+        '400':
+          description: The specified request was invalid. Check the id-type and that your request is formatted properly.  
+        '500':
+          description: Something went wrong on the server causing the request to fail.
+        '529':
+          description: The server is busy and not able to process your request. Please try again later.              
+components:
+  schemas:
+    mtm-response:    # Schema name
+      type: object
+      properties:
+        Transaction-id:
+          type: string
+          format: string
+          example: "12345678-abcd-9876-gfed-123456789abc"          # Property example
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/mtm-analytics'
+    mtm-analytics:    # Schema name
+      type: object
+      properties:
+          ID: 
+            type: string
+            example: US78467J1007
+          Simulation Date:
+            type: string
+          Name:
+            type: string
+          Value:
+            type: number
+      example:
+        ID: US78467J1007
+        Name: SS AND C TECHNOLOGIES HOLDINGS ORD
+        Simulation Date: '2020-08-01'
+        Value: 57.5
+    id-list-object:
+      type: object
+      required:
+        - id
+        - id-type
+      properties:
+        id:
+          type: string
+          example: US78467J1007
+        id-type:
+          type: string
+          example: isin
+        quantity: 
+          type: number
+          example: 1000
+    simulate-request:    # Schema name
+      type: object
+      required:
+        - id-list
+      properties:
+          id-list: 
+            type: array
+            items:
+              $ref: '#/components/schemas/id-list-object'
+            example:
+              id: US78467J1007
+              id-type: isin
+              quantity: 1000             
+          analytics:
+            type: array
+            items:
+              type: string
+              description: The list of analytics you would like to compute.
+              enum: [Price,Clean Price,Dirty Price,Value,Exposure,Yield,Profit and Loss,Return,Adjusted Duration,Effective Duration,Macaulay Duration,Monetary Duration,Convexity,Effective Convexity,Monetary Convexity,Implied Spread,Delta,Rho,Gamma,Theta,Vega,VaR 90%,VaR 95%,VaR 99%,VaR 99.5%,Principal Cashflows,Interest Cashflows]
+          format:
+            type: string
+            description: The format in which you would like to receive the response - json, csv, binary cubes, or MAG cubes.
+            enum: [json,csv,binary,mag]
+            default: json
+          valuation-date:
+            type: string
+            description: The date you wish to value the securities on.
+            default: t-1 or yesterday in YYYY-MM-DD format
+          algo-scenario-set:
+            type: string
+            example: coronavirus
+            description: A set of scenarios you'd like to calculate results on. See [our scenario documentation](https://thispersondoesnotexist.com/image) for a list of available scenarios, or make a request to the /scenario-info endpoint.       
+      example:
+        {
+          "id-list": [
+            {"id":"US78467J1007","type":"isin","quantity":1000},
+            {"id":"US0378331005","type":"isin","quantity":2000},
+            {"id":"US4592001014","type":"isin","quantity":3000}],
+          "analytics":["PnL","Value"],
+          "algo-scenario-set":"coronavirus",
+          "valuation-date":"2020-08-01",
+          "format": "json"
+          }
+    simulate-response:    # Schema name
+      type: object
+      properties:
+        Transaction-id:
+          type: string
+          format: string
+          example: "12345678-abcd-9876-gfed-123456789abc"          # Property example
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/simulate-analytics'
+    simulate-analytics:    # Schema name
+      type: object
+      properties:
+          ID: 
+            type: string
+            example: US78467J1007
+          Simulation Date:
+            type: string
+          Name:
+            type: string
+          Value:
+            type: number
+          Currency:
+            type: string
+      example:
+        [{
+          "Simulation Date": "2020-08-01",
+          "ID": "US78467J1007",
+          "Name": "SS AND C TECHNOLOGIES HOLDINGS ORD",
+          "Currency": "USD",
+          "Scenario Name": "Base Scenario",
+          "PnL": 0.0,
+          "Value": 57500          
+        },{
+          "Simulation Date": "2020-08-01",
+          "ID": "US0378331005",
+          "Name": "APPLE ORD",
+          "Currency": "USD",
+          "Scenario Name": "Base Scenario",
+          "PnL": 0.0,      
+          "Value": 850080
+        },{
+          "Simulation Date": "2020-08-01",
+          "ID": "US78467J1007",
+          "Name": "INTERNATIONAL BUSINESS MACHINES ORD",
+          "Currency": "USD",
+          "Scenario Name": "Base Scenario",
+          "PnL": 0.0,
+          "Value": 368820          
+        },{
+          "Simulation Date": "2020-08-01",
+          "ID": "US78467J1007",
+          "Name": "SS AND C TECHNOLOGIES HOLDINGS ORD",
+          "Currency": "USD",
+          "Scenario Name": "Coronavirus",
+          "PnL": -17820,
+          "Value": 39680         
+        },{
+          "Simulation Date": "2020-08-01",
+          "ID": "US0378331005",
+          "Name": "APPLE ORD",
+          "Currency": "USD",
+          "Scenario Name": "Coronavirus",
+          "PnL": -91080,
+          "Value": 759000             
+        },{
+          "Simulation Date": "2020-08-01",
+          "ID": "US78467J1007",
+          "Name": "INTERNATIONAL BUSINESS MACHINES ORD",
+          "Currency": "USD",
+          "Scenario Name": "Coronavirus",
+          "PnL": -73470,
+          "Value": 295350          
+        }]        
+  requestBodies:
+    simulate:
+      content:
+        application/json:
+          schema:
+            allOf:
+              - type: object
+              - $ref: '#/components/schemas/simulate-request'
+
+        
+          
+
